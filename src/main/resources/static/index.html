@@ -258,10 +258,16 @@ async function doCheck(e) {
 async function doStress(btn) {
   btn.disabled = true;
   $('stressStatus').textContent = '压测中…';
+  // 压测时间自生成且保证在规则时段内，避免依赖表单被"时段外"场景污染
+  const now = new Date(), pad = n => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = (now.getHours() >= 9 && now.getHours() < 22)
+    ? `${date} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+    : `${date} 12:00:00`;
   const uid = 'U-STRESS-' + Date.now();
   const body = i => JSON.stringify({
     transactionId: `T-Press-${Date.now()}-${i}`, userId: uid, accountNo: 'A-STRESS',
-    amount: 10, currency: 'CNY', channel: 'APP', occurTime: $('f-time').value || '2026-10-22 15:00:00'
+    amount: 10, currency: 'CNY', channel: 'APP', occurTime: time
   });
   const t0 = performance.now();
   const results = await Promise.all(Array.from({ length: 30 }, (_, i) =>
