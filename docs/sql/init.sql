@@ -4,6 +4,9 @@
 CREATE DATABASE IF NOT EXISTS risk_control DEFAULT CHARACTER SET utf8mb4;
 USE risk_control;
 
+-- 会话字符集必须与文件编码一致，否则中文经管道导入时被按客户端默认字符集双重编码
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS risk_rule (
     id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     rule_code        VARCHAR(64)  NOT NULL COMMENT '规则编码',
