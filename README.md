@@ -12,6 +12,7 @@
 | 交易风险检查 | `POST /api/transactions/risk-check` 同步决策接口 |
 | 名单管理 | 黑 / 白名单 CRUD + Redis 缓存 |
 | 命中记录 | 风控事件落库与分页查询 |
+| 演示控制台 | 内置单文件可视化页面（`src/main/resources/static/`），支持决策演示与一键并发压测 |
 
 技术栈：Java 17 · Spring Boot 3.2 · MyBatis-Plus · MySQL 8 · Redis 7
 
@@ -50,6 +51,9 @@ mvn spring-boot:run
 
 # 4. 测试（18 个单测，无需外部依赖）
 mvn test
+
+# 5. 打开演示控制台
+open http://localhost:8080/
 ```
 
 发起一笔风险检查：

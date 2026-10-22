@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Control Console</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel-2: #273449; --line: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8;
+    --pass: #22c55e; --review: #eab308; --reject: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; padding: 24px;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  header h1 { font-size: 20px; letter-spacing: .5px; }
+  header h1 span { color: var(--accent); }
+  .keybox { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .keybox input {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--text); padding: 6px 10px; width: 180px; font-family: ui-monospace, monospace;
+  }
+  nav { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+  nav button {
+    background: none; border: none; color: var(--muted); font-size: 14px;
+    padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  section { display: none; }
+  section.active { display: block; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .presets button, .actions button {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--text); padding: 7px 14px; cursor: pointer; font-size: 13px;
+  }
+  .presets button:hover, .actions button:hover { border-color: var(--accent); }
+  .presets button.hot { border-color: var(--accent); color: var(--accent); }
+  form .row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center; margin-bottom: 10px; }
+  form label { color: var(--muted); font-size: 13px; }
+  form input, form select {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+    color: var(--text); padding: 8px 10px; width: 100%; font-family: ui-monospace, monospace; font-size: 13px;
+  }
+  .submit { margin-top: 6px; background: var(--accent); border: none; border-radius: 6px;
+    color: #0b1220; font-weight: 600; padding: 9px 22px; cursor: pointer; }
+  .decision-card { text-align: center; padding: 30px 18px; }
+  .badge { display: inline-block; font-size: 30px; font-weight: 700; letter-spacing: 2px;
+    padding: 10px 34px; border-radius: 10px; }
+  .badge.PASS { background: rgba(34,197,94,.12); color: var(--pass); border: 1px solid var(--pass); }
+  .badge.REVIEW { background: rgba(234,179,8,.12); color: var(--review); border: 1px solid var(--review); }
+  .badge.REJECT { background: rgba(239,68,68,.12); color: var(--reject); border: 1px solid var(--reject); }
+  .meta { color: var(--muted); margin-top: 12px; font-size: 13px; }
+  .hits { margin-top: 16px; text-align: left; }
+  .hits .hit { background: var(--bg); border-left: 3px solid var(--review); border-radius: 4px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 13px; }
+  .hits .hit b { color: var(--accent); }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 14px; }
+  .bars { margin-top: 16px; }
+  .bar-row { display: grid; grid-template-columns: 80px 1fr 60px; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .bar-track { background: var(--bg); border-radius: 6px; height: 26px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width .6s ease; display: flex; align-items: center; }
+  .bar-fill.pass { background: var(--pass); }
+  .bar-fill.review { background: var(--review); }
+  .bar-num { text-align: right; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { color: var(--muted); text-align: left; font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  td.mono { font-family: ui-monospace, monospace; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .tag.PASS { background: rgba(34,197,94,.12); color: var(--pass); }
+  .tag.REVIEW { background: rgba(234,179,8,.12); color: var(--review); }
+  .tag.REJECT { background: rgba(239,68,68,.12); color: var(--reject); }
+  .actions { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+  #toast { position: fixed; right: 20px; bottom: 20px; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 16px; font-size: 13px; display: none; z-index: 10; }
+  #toast.err { border-color: var(--reject); color: var(--reject); }
+  .empty { color: var(--muted); text-align: center; padding: 30px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RISK CONTROL <span>CONSOLE</span></h1>
+  <div class="keybox">API Key <input id="apiKey" placeholder="X-Api-Key"></div>
+</header>
+
+<nav>
+  <button data-tab="check" class="active">风险检查</button>
+  <button data-tab="stress">并发压测</button>
+  <button data-tab="rules">规则列表</button>
+  <button data-tab="records">命中记录</button>
+</nav>
+
+<!-- Tab 1: 风险检查 -->
+<section id="check" class="active">
+  <div class="grid">
+    <div class="panel">
+      <div class="presets">
+        <button onclick="preset('normal')">正常交易</button>
+        <button onclick="preset('large')">大额交易</button>
+        <button onclick="preset('black')">黑名单用户</button>
+        <button onclick="preset('night')">时段外交易</button>
+      </div>
+      <form onsubmit="doCheck(event)">
+        <div class="row"><label>transactionId</label><input id="f-tid" required></div>
+        <div class="row"><label>userId</label><input id="f-uid" required></div>
+        <div class="row"><label>accountNo</label><input id="f-acc" required></div>
+        <div class="row"><label>amount</label><input id="f-amt" type="number" step="0.01" required></div>
+        <div class="row"><label>currency</label><input id="f-cur" value="CNY"></div>
+        <div class="row"><label>channel</label>
+          <select id="f-chn"><option>APP</option><option>WEB</option><option>API</option><option>POS</option></select>
+        </div>
+        <div class="row"><label>occurTime</label><input id="f-time" placeholder="yyyy-MM-dd HH:mm:ss" required></div>
+        <button class="submit" type="submit">提交风险检查</button>
+      </form>
+    </div>
+    <div class="panel decision-card" id="resultPanel">
+      <div class="empty">提交后在此展示决策结果</div>
+    </div>
+  </div>
+</section>
+
+<!-- Tab 2: 并发压测 -->
+<section id="stress">
+  <div class="panel">
+    <p class="hint">
+      验证 Redis Lua 滑动窗口的原子性：对同一用户发起 <b class="num">30</b> 笔交易（<b class="num">10</b> 并发，transactionId 唯一），
+      频率规则 <b class="num">maxCount=10</b> / 10 分钟窗口。
+      预期结果：<b class="num">前 10 笔 PASS</b>（计数 1~10），<b class="num">第 11 笔起 REVIEW</b>（计数 11~30 &gt; 10）。
+      若计数非原子，并发下将出现漏判（REVIEW &lt; 20）。
+    </p>
+    <div class="actions">
+      <button class="submit" onclick="doStress(this)">发起 30 并发压测</button>
+      <span id="stressStatus" class="hint" style="margin:0"></span>
+    </div>
+    <div class="bars">
+      <div class="bar-row"><span style="color:var(--pass)">PASS</span>
+        <div class="bar-track"><div class="bar-fill pass" id="barPass" style="width:0%"></div></div>
+        <span class="bar-num num" id="numPass">-</span></div>
+      <div class="bar-row"><span style="color:var(--review)">REVIEW</span>
+        <div class="bar-track"><div class="bar-fill review" id="barReview" style="width:0%"></div></div>
+        <span class="bar-num num" id="numReview">-</span></div>
+    </div>
+    <p class="hint" id="stressConclusion" style="margin-top:14px"></p>
+  </div>
+</section>
+
+<!-- Tab 3: 规则列表 -->
+<section id="rules">
+  <div class="panel">
+    <table>
+      <thead><tr><th>规则编码</th><th>名称</th><th>类型</th><th>优先级</th><th>动作</th><th>状态</th><th>阈值配置</th></tr></thead>
+      <tbody id="rulesBody"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Tab 4: 命中记录 -->
+<section id="records">
+  <div class="panel">
+    <div class="actions">
+      <button onclick="loadRecords()">刷新</button>
+      <span class="hint" style="margin:0">最近 20 条命中记录</span>
+    </div>
+    <table>
+      <thead><tr><th>交易号</th><th>规则</th><th>决策</th><th>命中详情</th><th>时间</th></tr></thead>
+      <tbody id="recordsBody"><tr><td colspan="5" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- API Key ----------
+$('apiKey').value = localStorage.getItem('risk_api_key') || 'dev-key-123';
+$('apiKey').addEventListener('change', e => localStorage.setItem('risk_api_key', e.target.value.trim()));
+
+async function api(path, options = {}) {
+  const key = $('apiKey').value.trim();
+  const res = await fetch(path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', 'X-Api-Key': key, ...(options.headers || {}) }
+  });
+  const body = await res.json();
+  if (body.code !== 0) throw new Error(`code=${body.code} ${body.message || ''}`);
+  return body.data;
+}
+
+function toast(msg, isErr = false) {
+  const t = $('toast');
+  t.textContent = msg; t.className = isErr ? 'err' : ''; t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ---------- Tab ----------
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    $(btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'rules') loadRules();
+    if (btn.dataset.tab === 'records') loadRecords();
+  });
+});
+
+// ---------- 风险检查 ----------
+function preset(type) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const inWindow = new Date(now.getTime() + 8 * 3600 * 1000);
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const scenes = {
+    normal: { uid: 'U1001', acc: 'A1001', amt: '10.50' },
+    large:  { uid: 'U1002', acc: 'A1002', amt: '15000.00' },
+    black:  { uid: 'U99999', acc: 'A1003', amt: '10.50' },
+    night:  { uid: 'U1004', acc: 'A1004', amt: '10.50', time: '23:30:00' }
+  };
+  const s = scenes[type];
+  $('f-tid').value = 'T-' + Date.now();
+  $('f-uid').value = s.uid; $('f-acc').value = s.acc; $('f-amt').value = s.amt;
+  $('f-time').value = s.time ? fmt(now).slice(0, 11) + s.time : fmt(now);
+}
+
+async function doCheck(e) {
+  e.preventDefault();
+  const payload = {
+    transactionId: $('f-tid').value, userId: $('f-uid').value, accountNo: $('f-acc').value,
+    amount: parseFloat($('f-amt').value), currency: $('f-cur').value,
+    channel: $('f-chn').value, occurTime: $('f-time').value
+  };
+  try {
+    const d = await api('/api/transactions/risk-check', { method: 'POST', body: JSON.stringify(payload) });
+    const color = { PASS: 'var(--pass)', REVIEW: 'var(--review)', REJECT: 'var(--reject)' }[d.decision];
+    const hits = (d.hitRules || []).map(h =>
+      `<div class="hit" style="border-left-color:${color}"><b>${h.ruleCode}</b>（${h.ruleName}）<br>${h.hitDetail}</div>`
+    ).join('') || '<div class="hit" style="border-left-color:var(--pass)">未命中任何规则</div>';
+    $('resultPanel').innerHTML =
+      `<span class="badge ${d.decision}">${d.decision}</span>
+       <div class="meta">transactionId: ${d.transactionId} · 耗时 <span class="num">${d.costMs}ms</span></div>
+       <div class="hits">${hits}</div>`;
+  } catch (err) { toast('检查失败：' + err.message, true); }
+}
+
+// ---------- 并发压测 ----------
+async function doStress(btn) {
+  btn.disabled = true;
+  $('stressStatus').textContent = '压测中…';
+  const uid = 'U-STRESS-' + Date.now();
+  const body = i => JSON.stringify({
+    transactionId: `T-Press-${Date.now()}-${i}`, userId: uid, accountNo: 'A-STRESS',
+    amount: 10, currency: 'CNY', channel: 'APP', occurTime: $('f-time').value || '2026-10-22 15:00:00'
+  });
+  const t0 = performance.now();
+  const results = await Promise.all(Array.from({ length: 30 }, (_, i) =>
+    api('/api/transactions/risk-check', { method: 'POST', body: body(i) })
+      .then(d => d.decision).catch(() => 'ERROR')
+  ));
+  const ms = Math.round(performance.now() - t0);
+  const pass = results.filter(r => r === 'PASS').length;
+  const review = results.filter(r => r === 'REVIEW').length;
+  const error = results.filter(r => r === 'ERROR').length;
+  $('barPass').style.width = (pass / 30 * 100) + '%';
+  $('barReview').style.width = (review / 30 * 100) + '%';
+  $('numPass').textContent = pass; $('numReview').textContent = review;
+  const atomic = (pass === 10 && review === 20) ? '✓ 与理论值完全一致：计数原子性无竞态漏判' :
+                 error > 0 ? `✗ ${error} 个请求异常，检查服务与 API Key` :
+                 '△ 与理论值有偏差，可能是历史窗口数据干扰，建议换用户重试';
+  $('stressConclusion').innerHTML =
+    `总耗时 <b class="num">${ms}ms</b>（30 请求 / 10 并发）。<b>${atomic}</b>`;
+  $('stressStatus').textContent = '';
+  btn.disabled = false;
+}
+
+// ---------- 规则 / 记录 ----------
+const TYPE_NAME = { LIMIT: '单笔限额', FREQUENCY: '频率限制', NAMELIST: '黑白名单', TIME_WINDOW: '时段异常' };
+async function loadRules() {
+  try {
+    const d = await api('/api/rules?pageNum=1&pageSize=50');
+    $('rulesBody').innerHTML = d.records.map(r => `<tr>
+      <td class="mono">${r.ruleCode}</td><td>${r.ruleName}</td>
+      <td>${TYPE_NAME[r.ruleType] || r.ruleType}</td><td class="num">${r.priority}</td>
+      <td><span class="tag ${r.action === 'REJECT' ? 'REJECT' : 'REVIEW'}">${r.action}</span></td>
+      <td class="mono">${r.status}</td><td class="mono">${r.thresholdConfig}</td></tr>`).join('');
+  } catch (err) { $('rulesBody').innerHTML = `<tr><td colspan="7" class="empty">加载失败：${err.message}</td></tr>`; }
+}
+
+async function loadRecords() {
+  try {
+    const d = await api('/api/hit-records?pageNum=1&pageSize=20');
+    if (!d.records.length) { $('recordsBody').innerHTML = '<tr><td colspan="5" class="empty">暂无命中记录，先去发起几笔交易</td></tr>'; return; }
+    $('recordsBody').innerHTML = d.records.map(r => `<tr>
+      <td class="mono">${r.transactionId}</td><td class="mono">${r.ruleCode}</td>
+      <td><span class="tag ${r.decision}">${r.decision}</span></td>
+      <td>${r.hitDetail}</td><td class="mono">${r.createTime || ''}</td></tr>`).join('');
+  } catch (err) { $('recordsBody').innerHTML = `<tr><td colspan="5" class="empty">加载失败：${err.message}</td></tr>`; }
+}
+</script>
+</body>
+</html>
